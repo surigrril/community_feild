@@ -4,7 +4,7 @@ import { Doughnut } from 'react-chartjs-2';
 import { 
   MessageCircle, ThumbsUp, Lock, CheckCircle2, Zap, Settings, 
   ArrowLeft, Users, Search, Bell, Clock, Calendar, Filter, Star, AlertTriangle,
-  PlusCircle, PenLine, TrendingUp, History, User, Check
+  PlusCircle, PenLine, TrendingUp, History, User, Check, ChevronRight, ChevronLeft
 } from 'lucide-react';
 
 // Chart.js 등록
@@ -26,13 +26,13 @@ const RoomList = ({ onSelectRoom, onGoToSuggest }) => {
   const [activeFilters, setActiveFilters] = useState([]); 
   const [sortMode, setSortMode] = useState('newest'); 
 
-  // 목업 데이터 (제목 아이콘 제거, 다중 질문 방 추가)
+  // 목업 데이터
   const rooms = [
     { 
       id: 105, 
       title: '수학여행 스타일, 너는 어때?', 
       content: '곧 수학여행 시즌이야! 너의 여행 스타일을 골라봐.\n나랑 딱 맞는 여행 메이트를 찾을 수 있을지도?',
-      type: 'multi_choice_discuss', // 새로운 타입 (객관식 4개 + 댓글)
+      type: 'multi_choice_discuss', 
       tags: ['HOT', '수학여행', '밸런스게임'], 
       participants: 215, 
       comments: 68, 
@@ -42,9 +42,8 @@ const RoomList = ({ onSelectRoom, onGoToSuggest }) => {
       icon: '🚌',
       endDate: '10.28',
       createdAt: '2023-10-15',
-      // 다중 질문 데이터 (4개)
       questions: [
-        { id: 'q1', text: '버스 옆자리, 누가 좋아?', options: ['수다쟁이 친구', '조용히 자는 친구'] },
+        { id: 'q1', text: '버스 옆자리, 누가 좋아?', options: ['재밌는 수다쟁이 친구', '조용히 자는 친구'] },
         { id: 'q2', text: '자유시간에는?', options: ['계획대로 움직여', '발길 닿는 대로!'] },
         { id: 'q3', text: '숙소에 도착하면?', options: ['짐부터 정리해', '침대부터 누워'] },
         { id: 'q4', text: '기념품 살 때?', options: ['가성비가 최고', '이쁘면 다 사!'] },
@@ -64,7 +63,6 @@ const RoomList = ({ onSelectRoom, onGoToSuggest }) => {
       icon: '🍛',
       endDate: '10.25',
       createdAt: '2023-10-01',
-      // 단일 질문 데이터
       questions: [
         { id: 'q1', text: '가장 먹고 싶은 메뉴는?', options: ['치즈 돈가스', '토마토 스파게티', '산채 비빔밥'] }
       ]
@@ -327,6 +325,9 @@ const DiscussionRoom = ({ roomData, onBack }) => {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [isVoted, setIsVoted] = useState(roomData.hasParticipated || isClosed); 
   
+  // Step-by-Step 투표를 위한 현재 질문 인덱스
+  const [currentQIdx, setCurrentQIdx] = useState(0);
+
   // 내 투표 상태 (단일 값 또는 객체)
   const [myVotes, setMyVotes] = useState({}); // { q1: '옵션1', q2: '옵션2' ... }
   
@@ -337,14 +338,18 @@ const DiscussionRoom = ({ roomData, onBack }) => {
   // 목업 투표 통계 데이터
   const [voteStats] = useState({ 
     '치즈 돈가스': 52, '토마토 스파게티': 38, '산채 비빔밥': 15,
-    '축구 유니폼': 120, '동물 잠옷': 200, '죄수복': 50, '한복': 10
+    '축구 유니폼': 120, '동물 잠옷': 200, '죄수복': 50, '한복': 10,
+    '재밌는 수다쟁이 친구': 100, '조용히 자는 친구': 115,
+    '계획대로 움직여': 80, '발길 닿는 대로!': 135,
+    '짐부터 정리해': 150, '침대부터 누워': 65,
+    '가성비가 최고': 40, '이쁘면 다 사!': 175
   });
 
   // 목업 댓글 데이터 (voteProfile 추가)
   const [comments, setComments] = useState([
     { 
       id: 101, ...getRandomProfile(), isMe: false, timeStr: '15분 전', 
-      voteProfile: { q1: '수다쟁이 친구', q2: '계획대로 움직여', q3: '짐부터 정리해', q4: '가성비가 최고' },
+      voteProfile: { q1: '재밌는 수다쟁이 친구', q2: '계획대로 움직여', q3: '짐부터 정리해', q4: '가성비가 최고' },
       vote: '치즈 돈가스', // 단일 투표용 호환
       content: '난 계획 짜는 게 좋아! J니까!', likes: 12 
     },
@@ -356,7 +361,7 @@ const DiscussionRoom = ({ roomData, onBack }) => {
     },
     { 
       id: 103, ...getRandomProfile(), isMe: true, timeStr: '1분 전', 
-      voteProfile: { q1: '수다쟁이 친구', q2: '발길 닿는 대로!', q3: '짐부터 정리해', q4: '이쁘면 다 사!' },
+      voteProfile: { q1: '재밌는 수다쟁이 친구', q2: '발길 닿는 대로!', q3: '짐부터 정리해', q4: '이쁘면 다 사!' },
       vote: '치즈 돈가스',
       content: '나는 반반 섞인 스타일인듯 ㅋㅋ', likes: 2 
     }
@@ -372,15 +377,29 @@ const DiscussionRoom = ({ roomData, onBack }) => {
   const handleVoteChange = (questionId, option) => {
     if (isClosed) return;
     setMyVotes(prev => ({ ...prev, [questionId]: option }));
+    
+    // 자동 넘김 로직 (마지막 문제가 아닐 때만)
+    if (currentQIdx < questions.length - 1) {
+      setTimeout(() => {
+        setCurrentQIdx(prev => prev + 1);
+      }, 300); // 0.3초 딜레이
+    }
+  };
+
+  const goToPrevQuestion = () => {
+    if (currentQIdx > 0) {
+      setCurrentQIdx(prev => prev - 1);
+    }
   };
 
   const submitVote = () => {
     // 모든 질문에 답했는지 확인
     const answeredCount = Object.keys(myVotes).length;
     if (answeredCount < questions.length) {
-      return alert('모든 질문에 답변해줘!');
+      return alert('아직 선택하지 않은 문제가 있어!');
     }
     setIsVoted(true);
+    setCurrentQIdx(0); // 결과 볼 때는 처음부터 보기
   };
 
   const handleCommentSubmit = () => {
@@ -409,7 +428,6 @@ const DiscussionRoom = ({ roomData, onBack }) => {
       if (myVotes[q.id] === commentVoteProfile[q.id]) matchCount++;
     });
     
-    // 4문제 기준: 0개(0%), 1개(25%), 2개(50%), 3개(75%), 4개(100%)
     return Math.round((matchCount / questions.length) * 100); 
   };
 
@@ -428,30 +446,17 @@ const DiscussionRoom = ({ roomData, onBack }) => {
     if (filterMode === 'my_comments') {
       filtered = filtered.filter(c => c.isMe);
     } else if (filterMode === 'same_opinion') {
-       // 단일 투표일 때
        if (!isMultiChoice) {
           filtered = filtered.filter(c => myVotes['q1'] && c.vote === myVotes['q1']);
        } else {
-          // 다중 투표일 때 (50% 이상 일치하는 사람만)
           filtered = filtered.filter(c => calculateMatchScore(c.voteProfile) >= 50);
           filtered.sort((a, b) => calculateMatchScore(b.voteProfile) - calculateMatchScore(a.voteProfile));
        }
     } else if (filterMode === 'popular') {
       filtered.sort((a, b) => b.likes - a.likes);
     }
-    // 'newest'는 기본 순서 유지
     
     return filtered;
-  };
-
-  // 단일 차트 데이터 (간단하게 첫번째 질문 기준)
-  const chartData = {
-    labels: questions.length > 0 ? questions[0].options : [],
-    datasets: [{
-      data: questions.length > 0 ? questions[0].options.map(opt => voteStats[opt] || 10) : [],
-      backgroundColor: ['#F59E0B', '#EF4444', '#10B981', '#3B82F6'],
-      borderWidth: 0,
-    }]
   };
 
   return (
@@ -516,47 +521,116 @@ const DiscussionRoom = ({ roomData, onBack }) => {
           {activeTab === 'vote' && mode !== 'discuss' && (
             <div className="animate-fade-in space-y-3">
                {!isVoted ? (
+                   // --- [투표 진행 화면] Step-by-Step ---
                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-                       <h4 className="font-bold text-lg mb-4 text-center">👇 너의 선택을 알려줘! 👇</h4>
-                       <div className="space-y-6">
-                           {questions.map((q, qIdx) => (
-                             <div key={q.id}>
-                               <p className="font-bold text-gray-800 mb-2 pl-1 flex items-center gap-2">
-                                 <span className="bg-orange-100 text-orange-600 w-5 h-5 rounded-full flex items-center justify-center text-[10px]">Q{qIdx+1}</span>
-                                 {q.text}
-                               </p>
-                               <div className="space-y-2">
-                                 {q.options.map((opt, optIdx) => (
-                                   <button 
-                                      key={optIdx} 
-                                      onClick={() => handleVoteChange(q.id, opt)}
-                                      disabled={isClosed}
-                                      className={`w-full text-left px-5 py-3 rounded-2xl border-2 transition-all shadow-sm font-medium text-sm flex justify-between items-center ${myVotes[q.id] === opt ? 'bg-orange-50 border-orange-400 text-orange-700' : 'bg-white border-gray-100 text-gray-500 hover:bg-gray-50'}`}
-                                   >
-                                      {opt}
-                                      {myVotes[q.id] === opt && <Check className="w-4 h-4 text-orange-500" />}
-                                   </button>
-                                 ))}
+                       {/* 진행 바 */}
+                       <div className="mb-6">
+                         <div className="flex justify-between text-xs font-bold text-gray-400 mb-2">
+                           <span>문제 {currentQIdx + 1}</span>
+                           <span>{questions.length}개 중</span>
+                         </div>
+                         <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                           <div 
+                             className="h-full bg-orange-400 transition-all duration-300 ease-out"
+                             style={{ width: `${((currentQIdx + 1) / questions.length) * 100}%` }}
+                           ></div>
+                         </div>
+                       </div>
+
+                       {/* 질문 영역 */}
+                       <div className="min-h-[200px] flex flex-col justify-center">
+                          <h4 className="font-black text-xl text-gray-800 mb-6 text-center leading-snug">
+                            Q{currentQIdx + 1}. <br/>
+                            <span className="text-orange-600">{questions[currentQIdx].text}</span>
+                          </h4>
+                          
+                          <div className="space-y-3">
+                             {questions[currentQIdx].options.map((opt, optIdx) => (
+                               <button 
+                                  key={optIdx} 
+                                  onClick={() => handleVoteChange(questions[currentQIdx].id, opt)}
+                                  disabled={isClosed}
+                                  className={`w-full text-left px-5 py-4 rounded-2xl border-2 transition-all shadow-sm font-bold text-base flex justify-between items-center ${myVotes[questions[currentQIdx].id] === opt ? 'bg-orange-50 border-orange-400 text-orange-700 scale-[1.02]' : 'bg-white border-gray-100 text-gray-600 hover:bg-orange-50 hover:border-orange-200'}`}
+                               >
+                                  {opt}
+                                  {myVotes[questions[currentQIdx].id] === opt && <Check className="w-5 h-5 text-orange-500" />}
+                               </button>
+                             ))}
+                          </div>
+                       </div>
+
+                       {/* 네비게이션 버튼 (이전, 완료만 남김) */}
+                       <div className="flex justify-between items-center mt-8">
+                         {currentQIdx > 0 ? (
+                           <button onClick={goToPrevQuestion} className="px-4 py-3 rounded-2xl bg-gray-100 text-gray-500 font-bold hover:bg-gray-200 transition-colors">
+                             <ChevronLeft className="w-5 h-5" />
+                           </button>
+                         ) : <div></div> /* Spacer */}
+                         
+                         {/* 마지막 문제일 때만 완료 버튼 표시 (중간 단계는 자동 이동) */}
+                         {currentQIdx === questions.length - 1 && (
+                           <button 
+                             onClick={submitVote} 
+                             disabled={!myVotes[questions[currentQIdx].id]}
+                             className={`flex-1 ml-3 py-3 rounded-2xl font-black text-lg transition-all shadow-md ${myVotes[questions[currentQIdx].id] ? 'bg-black text-white hover:bg-gray-800 active:scale-95' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                           >
+                             결과 보기 🎉
+                           </button>
+                         )}
+                       </div>
+                   </div>
+               ) : (
+                   // --- [투표 결과 화면] 모든 결과 표시 ---
+                   <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+                       <div className="text-center mb-6">
+                           <div className="text-4xl mb-2">🎉</div>
+                           <h4 className="font-black text-xl text-gray-800">모두 참여 완료!</h4>
+                           <p className="text-xs text-gray-400">다른 친구들은 뭘 선택했을까?</p>
+                       </div>
+                       
+                       <div className="space-y-8">
+                           {questions.map((q, idx) => (
+                             <div key={q.id} className="relative">
+                               <div className="flex items-center gap-2 mb-3">
+                                 <span className="bg-gray-100 text-gray-600 text-[10px] font-bold px-2 py-0.5 rounded-md">Q{idx+1}</span>
+                                 <h5 className="font-bold text-gray-800 text-sm">{q.text}</h5>
                                </div>
+                               
+                               <div className="space-y-2 pl-1">
+                                 {q.options.map((opt) => {
+                                   const count = voteStats[opt] || 0;
+                                   const total = q.options.reduce((acc, curr) => acc + (voteStats[curr] || 0), 0);
+                                   const percent = Math.round((count / total) * 100) || 0;
+                                   const isMyPick = myVotes[q.id] === opt;
+                                   
+                                   return (
+                                     <div key={opt} className="relative">
+                                       {/* 막대 그래프 배경 */}
+                                       <div className={`h-10 rounded-xl flex items-center px-3 relative overflow-hidden border ${isMyPick ? 'border-orange-200 bg-orange-50' : 'border-gray-100 bg-gray-50'}`}>
+                                          <div 
+                                            className={`absolute left-0 top-0 bottom-0 opacity-20 transition-all duration-1000 ease-out ${isMyPick ? 'bg-orange-500' : 'bg-gray-400'}`}
+                                            style={{ width: `${percent}%` }}
+                                          ></div>
+                                          
+                                          <div className="relative z-10 flex justify-between w-full items-center">
+                                            <span className={`text-xs font-bold ${isMyPick ? 'text-orange-700' : 'text-gray-600'}`}>
+                                              {opt} {isMyPick && <span className="text-[9px] bg-orange-500 text-white px-1.5 py-0.5 rounded ml-1">나</span>}
+                                            </span>
+                                            <span className="text-xs font-bold text-gray-500">{percent}%</span>
+                                          </div>
+                                       </div>
+                                     </div>
+                                   )
+                                 })}
+                               </div>
+                               {/* 구분선 */}
+                               {idx < questions.length - 1 && <div className="h-px bg-gray-100 mt-6 mx-2"></div>}
                              </div>
                            ))}
                        </div>
-                       <button onClick={submitVote} className="w-full mt-6 py-4 bg-orange-500 text-white rounded-2xl font-black text-lg shadow-md hover:bg-orange-600 transition-transform active:scale-95">
-                          투표 완료! 🎉
-                       </button>
-                   </div>
-               ) : (
-                   <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 text-center">
-                       <div className="text-4xl mb-2">🎉</div>
-                       <h4 className="font-black text-xl text-gray-800 mb-1">참여 완료!</h4>
-                       <p className="text-xs text-gray-400 mb-6">친구들은 어떻게 생각할까?</p>
-                       
-                       {/* 간단하게 첫번째 질문 결과만 보여줌 (공간상) */}
-                       <div className="h-48 w-full flex justify-center mb-6"><Doughnut data={chartData} options={{ maintainAspectRatio: false }} /></div>
-                       <p className="text-xs text-gray-400 mb-4">* 대표 질문 1개의 결과야</p>
 
                        {mode !== 'choice' && (
-                           <button onClick={() => setActiveTab('discuss')} className="w-full py-4 bg-orange-500 text-white rounded-2xl font-bold shadow-md hover:bg-orange-600 flex items-center justify-center gap-2 transition-transform active:scale-95">
+                           <button onClick={() => setActiveTab('discuss')} className="w-full mt-8 py-4 bg-orange-500 text-white rounded-2xl font-bold shadow-md hover:bg-orange-600 flex items-center justify-center gap-2 transition-transform active:scale-95">
                                <MessageCircle className="w-5 h-5" /> <span>친구들 반응 보러가기</span>
                            </button>
                        )}

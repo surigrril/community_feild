@@ -3,7 +3,8 @@ import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Doughnut } from 'react-chartjs-2';
 import { 
   MessageCircle, ThumbsUp, Lock, CheckCircle2, Zap, Settings, 
-  ArrowLeft, Users, Search, Bell, Clock, Calendar, Filter, Star, AlertTriangle
+  ArrowLeft, Users, Search, Bell, Clock, Calendar, Filter, Star, AlertTriangle,
+  PlusCircle, PenLine, TrendingUp, History, User, Check
 } from 'lucide-react';
 
 // Chart.js 등록
@@ -11,37 +12,66 @@ ChartJS.register(ArcElement, Tooltip, Legend);
 
 // --- [유틸리티] 랜덤 닉네임 생성기 ---
 const getRandomProfile = () => {
-  const animals = ['🐶 강아지', '🐱 고양이', '🐹 햄스터', '🐰 토끼', '🦊 여우', '🐼 판다', '🐯 호랑이'];
-  const adjs = ['신난', '배고픈', '졸린', '용감한', '똑똑한', '행복한'];
+  const adjs = ['신난', '배고픈', '졸린', '용감한', '똑똑한', '행복한', '즐거운', '수줍은', '엉뚱한'];
+  const nouns = ['초등학생', '어린이', '친구', '단짝', '지킴이', '박사님', '탐험가', '요리사'];
   return {
-    name: `${adjs[Math.floor(Math.random() * adjs.length)]} ${animals[Math.floor(Math.random() * animals.length)]}`,
-    color: ['bg-red-100', 'bg-orange-100', 'bg-yellow-100', 'bg-green-100', 'bg-blue-100', 'bg-purple-100'][Math.floor(Math.random() * 6)]
+    name: `${adjs[Math.floor(Math.random() * adjs.length)]} ${nouns[Math.floor(Math.random() * nouns.length)]}`,
+    colorClass: ['text-red-500', 'text-orange-500', 'text-green-600', 'text-blue-500', 'text-purple-500'][Math.floor(Math.random() * 5)]
   };
 };
 
 // --- [컴포넌트 1] 메인 방 리스트 화면 ---
-const RoomList = ({ onSelectRoom }) => {
+const RoomList = ({ onSelectRoom, onGoToSuggest }) => {
   const [showClosed, setShowClosed] = useState(false); 
   const [activeFilters, setActiveFilters] = useState([]); 
+  const [sortMode, setSortMode] = useState('newest'); 
 
+  // 목업 데이터 (제목 아이콘 제거, 다중 질문 방 추가)
   const rooms = [
     { 
+      id: 105, 
+      title: '수학여행 스타일, 너는 어때?', 
+      content: '곧 수학여행 시즌이야! 너의 여행 스타일을 골라봐.\n나랑 딱 맞는 여행 메이트를 찾을 수 있을지도?',
+      type: 'multi_choice_discuss', // 새로운 타입 (객관식 4개 + 댓글)
+      tags: ['HOT', '수학여행', '밸런스게임'], 
+      participants: 215, 
+      comments: 68, 
+      status: 'OPEN', 
+      hasParticipated: false,
+      bg: 'bg-teal-100',
+      icon: '🚌',
+      endDate: '10.28',
+      createdAt: '2023-10-15',
+      // 다중 질문 데이터 (4개)
+      questions: [
+        { id: 'q1', text: '버스 옆자리, 누가 좋아?', options: ['수다쟁이 친구', '조용히 자는 친구'] },
+        { id: 'q2', text: '자유시간에는?', options: ['계획대로 움직여', '발길 닿는 대로!'] },
+        { id: 'q3', text: '숙소에 도착하면?', options: ['짐부터 정리해', '침대부터 누워'] },
+        { id: 'q4', text: '기념품 살 때?', options: ['가성비가 최고', '이쁘면 다 사!'] },
+      ]
+    },
+    { 
       id: 101, 
-      title: '🍱 10월 급식 메뉴 월드컵', 
+      title: '10월 급식 메뉴 월드컵', 
       content: '친구들! 10월 특식으로 뭐가 나오면 좋을까?\n가장 먹고 싶은 메뉴를 골라줘!',
       type: 'choice_discuss', 
-      tags: ['HOT', '급식'], 
+      tags: ['급식', '메뉴추천'], 
       participants: 128, 
       comments: 45, 
       status: 'OPEN', 
       hasParticipated: true,
       bg: 'bg-orange-100',
       icon: '🍛',
-      endDate: '10.25'
+      endDate: '10.25',
+      createdAt: '2023-10-01',
+      // 단일 질문 데이터
+      questions: [
+        { id: 'q1', text: '가장 먹고 싶은 메뉴는?', options: ['치즈 돈가스', '토마토 스파게티', '산채 비빔밥'] }
+      ]
     },
     { 
       id: 102, 
-      title: '👕 체육대회 반티 정하기', 
+      title: '체육대회 반티 정하기', 
       content: '축구복은 너무 흔한가? 잠옷은 어때?\n우리 반의 멋진 반티를 골라줘!',
       type: 'choice', 
       tags: ['3학년', '체육대회'], 
@@ -51,11 +81,15 @@ const RoomList = ({ onSelectRoom }) => {
       hasParticipated: false,
       bg: 'bg-blue-100',
       icon: '⚽️',
-      endDate: '10.30'
+      endDate: '10.30',
+      createdAt: '2023-10-05',
+      questions: [
+        { id: 'q1', text: '반티 후보 투표', options: ['축구 유니폼', '동물 잠옷', '죄수복', '한복'] }
+      ]
     },
     { 
       id: 103, 
-      title: '📐 수학 시험 어땠어?', 
+      title: '수학 시험 어땠어?', 
       content: '서술형 마지막 문제 진짜 어렵지 않았어?\n다들 어떻게 풀었는지 이야기해보자 ㅠㅠ',
       type: 'discuss', 
       tags: ['멘붕', '시험'], 
@@ -65,11 +99,13 @@ const RoomList = ({ onSelectRoom }) => {
       hasParticipated: true, 
       bg: 'bg-purple-100',
       icon: '✏️',
-      endDate: '상시'
+      endDate: '상시',
+      createdAt: '2023-10-08',
+      questions: []
     },
     { 
       id: 104, 
-      title: '📚 [종료] 9월 모의고사 후기', 
+      title: '[종료] 9월 모의고사 후기', 
       content: '다들 시험 보느라 고생했어!',
       type: 'discuss', 
       tags: ['지난이야기'], 
@@ -79,7 +115,9 @@ const RoomList = ({ onSelectRoom }) => {
       hasParticipated: true,
       bg: 'bg-gray-200',
       icon: '💯',
-      endDate: '09.10'
+      endDate: '09.10',
+      createdAt: '2023-09-10',
+      questions: []
     },
   ];
 
@@ -91,53 +129,75 @@ const RoomList = ({ onSelectRoom }) => {
     );
   };
 
-  const getFilteredRooms = () => {
-    const baseList = rooms.filter(room => showClosed ? room.status === 'CLOSED' : room.status === 'OPEN');
-    if (activeFilters.length === 0) return baseList;
-    return baseList.filter(room => {
-      return activeFilters.some(filterId => {
-        if (filterId === 'PARTICIPATED') return room.hasParticipated;
-        if (filterId === 'NOT_PARTICIPATED') return !room.hasParticipated;
-        if (filterId.startsWith('TAG_')) return room.tags.includes(filterId.replace('TAG_', ''));
-        return false;
+  const getProcessedRooms = () => {
+    let result = rooms.filter(room => showClosed ? room.status === 'CLOSED' : room.status === 'OPEN');
+
+    if (activeFilters.length > 0) {
+      result = result.filter(room => {
+        return activeFilters.some(filterId => {
+          if (filterId === 'PARTICIPATED') return room.hasParticipated;
+          if (filterId === 'NOT_PARTICIPATED') return !room.hasParticipated;
+          if (filterId.startsWith('TAG_')) return room.tags.includes(filterId.replace('TAG_', ''));
+          return false;
+        });
       });
+    }
+
+    result.sort((a, b) => {
+      if (sortMode === 'popular') {
+        return b.participants - a.participants;
+      } else {
+        return b.id - a.id; 
+      }
     });
+
+    return result;
   };
 
-  const filteredList = getFilteredRooms();
+  const finalRoomList = getProcessedRooms();
 
   return (
     <div className="w-full max-w-md mx-auto bg-[#FFF9F0] h-full flex flex-col font-sans">
-      {/* 귀여운 헤더 */}
       <div className="bg-white px-5 pt-6 pb-4 sticky top-0 z-10 rounded-b-3xl shadow-sm">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex justify-between items-start mb-4">
           <div>
             <span className="text-xs text-orange-400 font-extrabold tracking-wider">우리들의 이야기</span>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-black text-gray-800 tracking-tight">{showClosed ? '보물상자 (지난글)' : '와글와글 광장'}</h1>
+              <h1 className="text-2xl font-black text-gray-800 tracking-tight">
+                {showClosed ? '보물상자 (지난글)' : '와글와글 광장'}
+              </h1>
             </div>
           </div>
           <div className="flex gap-2">
-             <button 
-               onClick={() => setShowClosed(!showClosed)}
-               className={`flex items-center justify-center w-10 h-10 rounded-full transition-transform active:scale-90 shadow-sm border ${showClosed ? 'bg-orange-400 text-white border-orange-400' : 'bg-white text-gray-400 border-gray-100'}`}
-             >
-               {showClosed ? <ArrowLeft className="w-6 h-6" /> : <Clock className="w-6 h-6" />}
+             <button onClick={onGoToSuggest} className="flex flex-col items-center justify-center w-12 h-12 rounded-2xl bg-orange-100 text-orange-600 active:scale-95 transition-transform">
+               <PlusCircle className="w-6 h-6 mb-0.5" />
+               <span className="text-[9px] font-bold">제안</span>
+             </button>
+             <button onClick={() => setShowClosed(!showClosed)} className={`flex flex-col items-center justify-center w-12 h-12 rounded-2xl border active:scale-95 transition-transform ${showClosed ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-400 border-gray-100'}`}>
+               {showClosed ? <ArrowLeft className="w-6 h-6 mb-0.5" /> : <History className="w-6 h-6 mb-0.5" />}
+               <span className="text-[9px] font-bold">{showClosed ? '돌아가기' : '지난이야기'}</span>
              </button>
           </div>
         </div>
 
-        {/* 필터 영역 (알약 모양) */}
         {!showClosed && (
           <div className="space-y-3">
-            <div className="flex gap-2">
-              <button onClick={() => toggleFilter('PARTICIPATED')} className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all border-2 shadow-sm ${activeFilters.includes('PARTICIPATED') ? 'bg-orange-400 border-orange-400 text-white' : 'bg-white border-orange-100 text-gray-400 hover:bg-orange-50'}`}>
-                 ✅ 참여한 방
-              </button>
-              <button onClick={() => toggleFilter('NOT_PARTICIPATED')} className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all border-2 shadow-sm ${activeFilters.includes('NOT_PARTICIPATED') ? 'bg-orange-400 border-orange-400 text-white' : 'bg-white border-orange-100 text-gray-400 hover:bg-orange-50'}`}>
-                 ✨ 새로운 방
-              </button>
+            <div className="flex justify-between items-center">
+              <div className="flex gap-2">
+                <button onClick={() => toggleFilter('PARTICIPATED')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border shadow-sm ${activeFilters.includes('PARTICIPATED') ? 'bg-green-100 border-green-200 text-green-700' : 'bg-white border-gray-100 text-gray-400'}`}>
+                   ✅ 참여완료
+                </button>
+                <button onClick={() => toggleFilter('NOT_PARTICIPATED')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border shadow-sm ${activeFilters.includes('NOT_PARTICIPATED') ? 'bg-orange-100 border-orange-200 text-orange-700' : 'bg-white border-gray-100 text-gray-400'}`}>
+                   ✨ 미참여
+                </button>
+              </div>
+
+              <div className="flex bg-gray-100 p-1 rounded-lg">
+                <button onClick={() => setSortMode('newest')} className={`px-2 py-1 rounded-md text-[10px] font-bold transition-all ${sortMode === 'newest' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400'}`}>최신순</button>
+                <button onClick={() => setSortMode('popular')} className={`px-2 py-1 rounded-md text-[10px] font-bold transition-all ${sortMode === 'popular' ? 'bg-white text-red-500 shadow-sm' : 'text-gray-400'}`}>인기순</button>
+              </div>
             </div>
+
             <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
               {allTags.map(tag => (
                 <button key={tag} onClick={() => toggleFilter(`TAG_${tag}`)} className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${activeFilters.includes(`TAG_${tag}`) ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-400'}`}>
@@ -149,129 +209,260 @@ const RoomList = ({ onSelectRoom }) => {
         )}
       </div>
 
-      {/* 리스트 영역 */}
       <div className="flex-1 overflow-y-auto p-5 space-y-4">
-        {filteredList.map(room => (
-          <div 
-            key={room.id} 
-            onClick={() => onSelectRoom(room)}
-            className={`rounded-3xl p-5 shadow-sm border-2 active:scale-[0.98] transition-all cursor-pointer relative overflow-hidden ${room.status === 'CLOSED' ? 'bg-gray-50 border-gray-200 grayscale opacity-80' : 'bg-white border-orange-100 hover:border-orange-300 hover:shadow-md'}`}
-          >
-            {/* 참여 뱃지 */}
-            <div className="flex justify-between items-start mb-3">
-              <div className="flex gap-1.5 flex-wrap">
-                {room.hasParticipated ? (
-                  <span className="text-[10px] px-2.5 py-1 rounded-full font-black bg-green-100 text-green-600 flex items-center gap-1 shadow-sm">
-                    <CheckCircle2 className="w-3 h-3" /> 참여함!
-                  </span>
-                ) : (
-                  room.status === 'OPEN' && <span className="text-[10px] px-2.5 py-1 rounded-full font-black bg-red-100 text-red-500 shadow-sm">NEW 🔥</span>
-                )}
-                {room.status === 'CLOSED' && <span className="text-[10px] px-2.5 py-1 rounded-full font-black bg-gray-200 text-gray-500">마감</span>}
+        {finalRoomList.length === 0 ? (
+          <div className="text-center py-20 text-gray-400">
+            <p>해당하는 방이 없어 😅</p>
+          </div>
+        ) : (
+          finalRoomList.map(room => (
+            <div 
+              key={room.id} 
+              onClick={() => onSelectRoom(room)}
+              className={`rounded-3xl p-5 shadow-sm border-2 active:scale-[0.98] transition-all cursor-pointer relative overflow-hidden ${room.status === 'CLOSED' ? 'bg-gray-50 border-gray-200 grayscale opacity-80' : 'bg-white border-orange-100 hover:border-orange-300 hover:shadow-md'}`}
+            >
+              <div className="flex justify-between items-start mb-3">
+                <div className="flex gap-1.5 flex-wrap">
+                  {room.hasParticipated ? (
+                    <span className="text-[10px] px-2.5 py-1 rounded-full font-black bg-green-100 text-green-600 flex items-center gap-1 shadow-sm">
+                      <CheckCircle2 className="w-3 h-3" /> 참여완료
+                    </span>
+                  ) : (
+                    room.status === 'OPEN' && <span className="text-[10px] px-2.5 py-1 rounded-full font-black bg-red-100 text-red-500 shadow-sm">미참여 🔥</span>
+                  )}
+                  {room.status === 'CLOSED' && <span className="text-[10px] px-2.5 py-1 rounded-full font-black bg-gray-200 text-gray-500">마감</span>}
+                </div>
+                <span className="text-[10px] text-gray-400 font-bold bg-gray-50 px-2 py-1 rounded-lg">{room.endDate} 까지</span>
               </div>
-              <span className="text-[10px] text-gray-400 font-bold bg-gray-50 px-2 py-1 rounded-lg">{room.endDate} 까지</span>
-            </div>
 
-            <div className="flex gap-4 items-start">
-              {/* 아이콘 영역 */}
-              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-3xl shadow-inner ${room.bg}`}>
-                {room.icon}
-              </div>
-              
-              <div className="flex-1">
-                <h3 className="font-black text-lg text-gray-800 leading-tight mb-1">{room.title}</h3>
-                <p className="text-xs text-gray-500 line-clamp-1 font-medium">{room.content}</p>
+              <div className="flex gap-4 items-start">
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-3xl shadow-inner ${room.bg}`}>
+                  {room.icon}
+                </div>
                 
-                {/* 하단 정보 */}
-                <div className="flex items-center gap-3 mt-3">
-                   <div className="flex -space-x-1.5">
-                      {[...Array(3)].map((_, i) => (
-                        <div key={i} className={`w-5 h-5 rounded-full border-2 border-white flex items-center justify-center text-[10px] ${['bg-red-200', 'bg-yellow-200', 'bg-blue-200'][i]}`}>
-                          {['🐶', '🐱', '🐹'][i]}
-                        </div>
-                      ))}
-                   </div>
-                   <span className="text-xs text-gray-400 font-bold">+{room.participants}명 참여중</span>
+                <div className="flex-1">
+                  <h3 className="font-black text-lg text-gray-800 leading-tight mb-1">{room.title}</h3>
+                  <p className="text-xs text-gray-500 line-clamp-1 font-medium">{room.content}</p>
+                  
+                  <div className="flex items-center gap-3 mt-3">
+                     <span className="text-xs text-gray-400 font-bold flex items-center gap-1">
+                       <Users className="w-3 h-3" /> {room.participants}명 참여
+                     </span>
+                     {room.comments > 0 && (
+                        <span className="text-xs text-gray-400 font-bold flex items-center gap-1">
+                          <MessageCircle className="w-3 h-3" /> {room.comments}
+                        </span>
+                     )}
+                     {room.type === 'multi_choice_discuss' && (
+                        <span className="text-[10px] text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded font-bold border border-teal-100">
+                          밸런스게임
+                        </span>
+                     )}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
-        <div className="h-10"></div> {/* 하단 여백 */}
+          ))
+        )}
+        <div className="h-10"></div>
       </div>
     </div>
   );
 };
 
-// --- [컴포넌트 2] 상세 이야기방 화면 ---
+// --- [컴포넌트 2] 주제 제안하기 화면 ---
+const SuggestTopic = ({ onBack }) => {
+  const [suggestion, setSuggestion] = useState('');
+
+  const handleSubmit = () => {
+    if (!suggestion.trim()) return alert('내용을 입력해줘!');
+    alert('제안해줘서 고마워! 선생님이 꼭 읽어볼게 😊');
+    onBack();
+  };
+
+  return (
+    <div className="w-full max-w-md mx-auto bg-white h-full flex flex-col font-sans">
+      <div className="px-5 py-4 flex items-center gap-3 border-b border-gray-100">
+        <button onClick={onBack} className="p-2 hover:bg-gray-100 rounded-full">
+          <ArrowLeft className="w-6 h-6 text-gray-600" />
+        </button>
+        <h2 className="font-black text-lg text-gray-800">주제 제안하기</h2>
+      </div>
+      
+      <div className="p-6 flex-1 flex flex-col">
+        <div className="bg-orange-50 p-5 rounded-2xl mb-6">
+          <h3 className="font-bold text-orange-600 mb-2 flex items-center gap-2">
+            <PenLine className="w-5 h-5" /> 어떤 이야기가 하고 싶어?
+          </h3>
+          <p className="text-sm text-gray-600 leading-relaxed">
+            "급식 메뉴 정하고 싶어요!"<br/>
+            "체육대회 종목 투표해요!"<br/>
+            친구들과 나누고 싶은 주제가 있다면 자유롭게 적어줘.
+          </p>
+        </div>
+
+        <textarea 
+          className="w-full h-48 p-4 bg-gray-50 rounded-2xl border-2 border-gray-100 focus:border-orange-300 focus:bg-white transition-colors outline-none resize-none text-gray-700 font-medium"
+          placeholder="여기에 적어주면 돼!"
+          value={suggestion}
+          onChange={(e) => setSuggestion(e.target.value)}
+        ></textarea>
+
+        <button 
+          onClick={handleSubmit}
+          className="mt-auto w-full py-4 bg-orange-500 text-white rounded-2xl font-black text-lg shadow-md active:scale-95 transition-transform"
+        >
+          제안 보내기 💌
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// --- [컴포넌트 3] 상세 이야기방 화면 ---
 const DiscussionRoom = ({ roomData, onBack }) => {
   const isClosed = roomData.status === 'CLOSED';
-  const initialTab = roomData.type === 'discuss' ? 'discuss' : 'vote';
+  // 객관식이 포함된 방이면 초기 탭은 'vote', 토론만 있는 방은 'discuss'
+  const initialTab = roomData.questions && roomData.questions.length > 0 ? 'vote' : 'discuss';
   const [activeTab, setActiveTab] = useState(initialTab);
   const [isVoted, setIsVoted] = useState(roomData.hasParticipated || isClosed); 
-  const [myVote, setMyVote] = useState(roomData.hasParticipated ? '돈가스' : null); 
+  
+  // 내 투표 상태 (단일 값 또는 객체)
+  const [myVotes, setMyVotes] = useState({}); // { q1: '옵션1', q2: '옵션2' ... }
+  
+  // 필터: 'newest' | 'same_opinion' | 'popular' | 'my_comments'
   const [filterMode, setFilterMode] = useState('newest'); 
   const [commentInput, setCommentInput] = useState('');
   
-  const [votes, setVotes] = useState({ '돈가스': 52, '스파게티': 38, '비빔밥': 15 });
-  
-  // 랜덤 닉네임과 함께 댓글 데이터 생성
+  // 목업 투표 통계 데이터
+  const [voteStats] = useState({ 
+    '치즈 돈가스': 52, '토마토 스파게티': 38, '산채 비빔밥': 15,
+    '축구 유니폼': 120, '동물 잠옷': 200, '죄수복': 50, '한복': 10
+  });
+
+  // 목업 댓글 데이터 (voteProfile 추가)
   const [comments, setComments] = useState([
-    { id: 101, ...getRandomProfile(), isMe: false, timeStr: '15분 전', vote: '돈가스', content: '돈가스가 짱이지! 소스 많이 뿌려주세요 😋', likes: 12 },
-    { id: 102, ...getRandomProfile(), isMe: false, timeStr: '10분 전', vote: '스파게티', content: '난 면이 좋아.. 후루룩', likes: 5 },
+    { 
+      id: 101, ...getRandomProfile(), isMe: false, timeStr: '15분 전', 
+      voteProfile: { q1: '수다쟁이 친구', q2: '계획대로 움직여', q3: '짐부터 정리해', q4: '가성비가 최고' },
+      vote: '치즈 돈가스', // 단일 투표용 호환
+      content: '난 계획 짜는 게 좋아! J니까!', likes: 12 
+    },
+    { 
+      id: 102, ...getRandomProfile(), isMe: false, timeStr: '10분 전', 
+      voteProfile: { q1: '조용히 자는 친구', q2: '발길 닿는 대로!', q3: '침대부터 누워', q4: '이쁘면 다 사!' },
+      vote: '토마토 스파게티', 
+      content: '여행은 쉬러 가는 거지~ 무조건 침대!', likes: 5 
+    },
+    { 
+      id: 103, ...getRandomProfile(), isMe: true, timeStr: '1분 전', 
+      voteProfile: { q1: '수다쟁이 친구', q2: '발길 닿는 대로!', q3: '짐부터 정리해', q4: '이쁘면 다 사!' },
+      vote: '치즈 돈가스',
+      content: '나는 반반 섞인 스타일인듯 ㅋㅋ', likes: 2 
+    }
   ]);
 
   const mode = roomData.type; 
-  const myProfile = useMemo(() => ({ name: '나 (익명)', color: 'bg-blue-50' }), []); // 내 프로필은 고정
+  const questions = roomData.questions || [];
+  const isMultiChoice = mode === 'multi_choice_discuss';
 
-  const handleVote = (value) => {
+  const myProfile = useMemo(() => ({ name: '나 (익명)', colorClass: 'text-gray-800 font-bold' }), []); 
+
+  // 투표 핸들러
+  const handleVoteChange = (questionId, option) => {
     if (isClosed) return;
-    setMyVote(value);
-    setVotes(prev => ({ ...prev, [value]: prev[value] + 1 }));
+    setMyVotes(prev => ({ ...prev, [questionId]: option }));
+  };
+
+  const submitVote = () => {
+    // 모든 질문에 답했는지 확인
+    const answeredCount = Object.keys(myVotes).length;
+    if (answeredCount < questions.length) {
+      return alert('모든 질문에 답변해줘!');
+    }
     setIsVoted(true);
   };
 
   const handleCommentSubmit = () => {
     if (isClosed) return;
     if (!commentInput.trim()) return alert("친구들에게 할 말을 적어줘!");
+    
     const newComment = {
       id: Date.now(), ...myProfile, isMe: true, timeStr: '방금',
-      timestamp: Date.now(), vote: myVote, content: commentInput, likes: 0
+      timestamp: Date.now(), 
+      vote: myVotes['q1'] || null, // 단일 투표 호환
+      voteProfile: myVotes, // 다중 투표 데이터
+      content: commentInput, likes: 0
     };
     setComments(prev => [newComment, ...prev]);
     setCommentInput('');
+    setFilterMode('newest'); // 댓글 등록 후 최신순으로 이동
   };
 
+  // --- [핵심 로직] 궁합 계산기 ---
+  const calculateMatchScore = (commentVoteProfile) => {
+    if (!isMultiChoice || !commentVoteProfile) return 0;
+    if (Object.keys(myVotes).length === 0) return 0;
+    
+    let matchCount = 0;
+    questions.forEach(q => {
+      if (myVotes[q.id] === commentVoteProfile[q.id]) matchCount++;
+    });
+    
+    // 4문제 기준: 0개(0%), 1개(25%), 2개(50%), 3개(75%), 4개(100%)
+    return Math.round((matchCount / questions.length) * 100); 
+  };
+
+  const getMatchTag = (score) => {
+    if (score === 100) return { text: '💯 운명이야!', color: 'bg-pink-100 text-pink-600' };
+    if (score >= 75) return { text: '💖 꽤 잘맞아', color: 'bg-red-100 text-red-500' };
+    if (score >= 50) return { text: '🤝 반반 치킨', color: 'bg-orange-100 text-orange-600' };
+    if (score >= 25) return { text: '🤔 조금 달라', color: 'bg-blue-100 text-blue-500' };
+    return { text: '🔥 정반대 매력', color: 'bg-gray-100 text-gray-500' };
+  };
+
+  // --- [필터 로직] ---
   const getFilteredComments = () => {
     let filtered = [...comments];
-    const calculateMatch = (c) => (myVote && c.vote === myVote ? 100 : 0);
-    if (mode === 'choice_discuss' && filterMode === 'same_opinion' && myVote) {
-      filtered = filtered.filter(c => calculateMatch(c) >= 50);
+
+    if (filterMode === 'my_comments') {
+      filtered = filtered.filter(c => c.isMe);
+    } else if (filterMode === 'same_opinion') {
+       // 단일 투표일 때
+       if (!isMultiChoice) {
+          filtered = filtered.filter(c => myVotes['q1'] && c.vote === myVotes['q1']);
+       } else {
+          // 다중 투표일 때 (50% 이상 일치하는 사람만)
+          filtered = filtered.filter(c => calculateMatchScore(c.voteProfile) >= 50);
+          filtered.sort((a, b) => calculateMatchScore(b.voteProfile) - calculateMatchScore(a.voteProfile));
+       }
+    } else if (filterMode === 'popular') {
+      filtered.sort((a, b) => b.likes - a.likes);
     }
-    if (mode === 'choice_discuss' && filterMode === 'same_opinion') {
-        filtered.sort((a, b) => calculateMatch(b) - calculateMatch(a));
-    }
+    // 'newest'는 기본 순서 유지
+    
     return filtered;
   };
 
+  // 단일 차트 데이터 (간단하게 첫번째 질문 기준)
   const chartData = {
-    labels: ['돈가스', '스파게티', '비빔밥'],
+    labels: questions.length > 0 ? questions[0].options : [],
     datasets: [{
-      data: Object.values(votes),
-      backgroundColor: ['#F59E0B', '#EF4444', '#10B981'],
+      data: questions.length > 0 ? questions[0].options.map(opt => voteStats[opt] || 10) : [],
+      backgroundColor: ['#F59E0B', '#EF4444', '#10B981', '#3B82F6'],
       borderWidth: 0,
     }]
   };
 
   return (
     <div className="w-full max-w-md mx-auto bg-[#FFF9F0] h-full flex flex-col relative font-sans">
-      {/* 헤더 */}
+      {/* 상세 헤더 */}
       <div className="bg-white px-4 py-3 border-b border-gray-100 flex items-center gap-3 sticky top-0 z-30 shadow-sm rounded-b-3xl">
         <button onClick={onBack} className="p-2 hover:bg-orange-50 rounded-full transition-colors text-gray-600">
           <ArrowLeft className="w-6 h-6" />
         </button>
         <div className="flex-1 text-center">
-            <span className="text-sm font-black text-gray-800 tracking-tight">{roomData.title}</span>
+            <span className="text-sm font-black text-gray-800 tracking-tight line-clamp-1">{roomData.title}</span>
         </div>
         <button className="p-2 text-gray-300">
              <AlertTriangle className="w-5 h-5" />
@@ -301,19 +492,20 @@ const DiscussionRoom = ({ roomData, onBack }) => {
            </div>
         </div>
 
-        {/* 탭 버튼 (둥글게) */}
+        {/* 탭 버튼 */}
         <div className="mx-4 mb-4 bg-gray-200 p-1 rounded-2xl flex relative z-10">
           {mode !== 'discuss' && (
             <button onClick={() => setActiveTab('vote')} className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all ${activeTab === 'vote' ? 'bg-white text-orange-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
-              📊 투표 결과
+              📊 투표 {isVoted ? '결과' : '하기'}
             </button>
           )}
           {mode !== 'choice' && (
-            <button onClick={() => { if(mode==='choice_discuss' && !isVoted) return; setActiveTab('discuss'); }} 
+            <button onClick={() => { if(roomData.questions?.length > 0 && !isVoted) return; setActiveTab('discuss'); }} 
               className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all relative ${activeTab === 'discuss' ? 'bg-white text-orange-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
               🗣️ 와글와글 댓글
-              {mode === 'choice_discuss' && isVoted && activeTab !== 'discuss' && !isClosed && (
-                  <span className="absolute top-2 right-4 w-2 h-2 bg-red-500 rounded-full animate-bounce"></span>
+              {isVoted && activeTab !== 'discuss' && !isClosed && (
+                  <span className="absolute top-2 right-4 w-2 h-2 bg-red-500 rounded-full animate-bounce">
+                  </span>
               )}
             </button>
           )}
@@ -325,29 +517,47 @@ const DiscussionRoom = ({ roomData, onBack }) => {
             <div className="animate-fade-in space-y-3">
                {!isVoted ? (
                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-                       <h4 className="font-bold text-lg mb-4 text-center">👇 하나만 골라줘! 👇</h4>
-                       <div className="space-y-3">
-                           {['돈가스', '스파게티', '비빔밥'].map((opt, idx) => (
-                               <button 
-                                  key={idx} 
-                                  onClick={() => handleVote(opt)} 
-                                  disabled={isClosed}
-                                  className={`w-full text-left px-5 py-4 rounded-2xl border-2 transition-all shadow-sm group font-bold text-gray-600 ${isClosed ? 'bg-gray-50 border-gray-100' : 'bg-white border-orange-100 hover:border-orange-400 hover:bg-orange-50'}`}
-                               >
-                                   {['🍛', '🍝', '🥗'][idx]} {opt}
-                               </button>
+                       <h4 className="font-bold text-lg mb-4 text-center">👇 너의 선택을 알려줘! 👇</h4>
+                       <div className="space-y-6">
+                           {questions.map((q, qIdx) => (
+                             <div key={q.id}>
+                               <p className="font-bold text-gray-800 mb-2 pl-1 flex items-center gap-2">
+                                 <span className="bg-orange-100 text-orange-600 w-5 h-5 rounded-full flex items-center justify-center text-[10px]">Q{qIdx+1}</span>
+                                 {q.text}
+                               </p>
+                               <div className="space-y-2">
+                                 {q.options.map((opt, optIdx) => (
+                                   <button 
+                                      key={optIdx} 
+                                      onClick={() => handleVoteChange(q.id, opt)}
+                                      disabled={isClosed}
+                                      className={`w-full text-left px-5 py-3 rounded-2xl border-2 transition-all shadow-sm font-medium text-sm flex justify-between items-center ${myVotes[q.id] === opt ? 'bg-orange-50 border-orange-400 text-orange-700' : 'bg-white border-gray-100 text-gray-500 hover:bg-gray-50'}`}
+                                   >
+                                      {opt}
+                                      {myVotes[q.id] === opt && <Check className="w-4 h-4 text-orange-500" />}
+                                   </button>
+                                 ))}
+                               </div>
+                             </div>
                            ))}
                        </div>
+                       <button onClick={submitVote} className="w-full mt-6 py-4 bg-orange-500 text-white rounded-2xl font-black text-lg shadow-md hover:bg-orange-600 transition-transform active:scale-95">
+                          투표 완료! 🎉
+                       </button>
                    </div>
                ) : (
                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 text-center">
                        <div className="text-4xl mb-2">🎉</div>
-                       <h4 className="font-black text-xl text-gray-800 mb-1">투표 완료!</h4>
-                       <p className="text-xs text-gray-400 mb-6">참여해줘서 고마워!</p>
+                       <h4 className="font-black text-xl text-gray-800 mb-1">참여 완료!</h4>
+                       <p className="text-xs text-gray-400 mb-6">친구들은 어떻게 생각할까?</p>
+                       
+                       {/* 간단하게 첫번째 질문 결과만 보여줌 (공간상) */}
                        <div className="h-48 w-full flex justify-center mb-6"><Doughnut data={chartData} options={{ maintainAspectRatio: false }} /></div>
-                       {mode === 'choice_discuss' && (
+                       <p className="text-xs text-gray-400 mb-4">* 대표 질문 1개의 결과야</p>
+
+                       {mode !== 'choice' && (
                            <button onClick={() => setActiveTab('discuss')} className="w-full py-4 bg-orange-500 text-white rounded-2xl font-bold shadow-md hover:bg-orange-600 flex items-center justify-center gap-2 transition-transform active:scale-95">
-                               <MessageCircle className="w-5 h-5" /> <span>친구들 생각 보러가기</span>
+                               <MessageCircle className="w-5 h-5" /> <span>친구들 반응 보러가기</span>
                            </button>
                        )}
                    </div>
@@ -358,31 +568,40 @@ const DiscussionRoom = ({ roomData, onBack }) => {
           {/* 토론 탭 */}
           {activeTab === 'discuss' && mode !== 'choice' && (
             <div className="animate-fade-in flex flex-col">
-                {mode === 'choice_discuss' && !isVoted && !isClosed && (
+                {/* 잠금 화면 (투표 안했을 때) */}
+                {roomData.questions?.length > 0 && !isVoted && !isClosed && (
                      <div className="bg-white/80 backdrop-blur rounded-3xl p-8 flex flex-col items-center justify-center text-center border-2 border-dashed border-gray-300">
                         <Lock className="w-10 h-10 text-gray-300 mb-3" />
                         <h4 className="font-black text-gray-600 text-lg">아직 잠겨있어!</h4>
-                        <p className="text-sm text-gray-400 mt-1 mb-4">투표를 해야 들어올 수 있어 🤫</p>
+                        <p className="text-sm text-gray-400 mt-1 mb-4">투표를 해야 친구들 글을 볼 수 있어 🤫</p>
                         <button onClick={() => setActiveTab('vote')} className="px-6 py-2 bg-orange-500 text-white rounded-xl text-sm font-bold shadow-md active:scale-95 transition-transform">투표하러 가기</button>
                     </div>
                 )}
 
                 {(isVoted || mode === 'discuss' || isClosed) && (
                   <>
-                    {/* 필터 */}
-                    <div className="flex gap-2 mb-4 overflow-x-auto no-scrollbar">
-                         {mode === 'choice_discuss' && (
-                          <button onClick={() => setFilterMode('same_opinion')} className={`px-4 py-1.5 rounded-full text-xs border-2 flex items-center gap-1 transition-colors ${filterMode === 'same_opinion' ? 'bg-pink-100 border-pink-200 text-pink-600 font-bold' : 'bg-white border-gray-100 text-gray-400 font-medium'}`}><Zap className="w-3 h-3" /> 나랑 통하는 친구</button>
+                    {/* 필터 4종 */}
+                    <div className="flex gap-2 mb-4 overflow-x-auto no-scrollbar py-1">
+                        {roomData.questions?.length > 0 && (
+                          <button onClick={() => setFilterMode('same_opinion')} className={`whitespace-nowrap px-4 py-1.5 rounded-full text-xs border-2 flex items-center gap-1 transition-colors ${filterMode === 'same_opinion' ? 'bg-pink-100 border-pink-200 text-pink-600 font-bold' : 'bg-white border-gray-100 text-gray-400 font-medium'}`}>
+                            <Zap className="w-3 h-3" /> 통하는 친구
+                          </button>
                         )}
-                        <button onClick={() => setFilterMode('newest')} className={`px-4 py-1.5 rounded-full text-xs border-2 transition-colors ${filterMode === 'newest' ? 'bg-blue-100 border-blue-200 text-blue-600 font-bold' : 'bg-white border-gray-100 text-gray-400 font-medium'}`}>최신순</button>
+                        <button onClick={() => setFilterMode('popular')} className={`whitespace-nowrap px-4 py-1.5 rounded-full text-xs border-2 transition-colors ${filterMode === 'popular' ? 'bg-red-100 border-red-200 text-red-600 font-bold' : 'bg-white border-gray-100 text-gray-400 font-medium'}`}>
+                          🔥 인기순
+                        </button>
+                        <button onClick={() => setFilterMode('my_comments')} className={`whitespace-nowrap px-4 py-1.5 rounded-full text-xs border-2 transition-colors ${filterMode === 'my_comments' ? 'bg-yellow-100 border-yellow-200 text-yellow-600 font-bold' : 'bg-white border-gray-100 text-gray-400 font-medium'}`}>
+                          💬 내가 쓴 글
+                        </button>
+                        <button onClick={() => setFilterMode('newest')} className={`whitespace-nowrap px-4 py-1.5 rounded-full text-xs border-2 transition-colors ${filterMode === 'newest' ? 'bg-blue-100 border-blue-200 text-blue-600 font-bold' : 'bg-white border-gray-100 text-gray-400 font-medium'}`}>
+                          최신순
+                        </button>
                     </div>
                     
-                    {/* 입력창 */}
+                    {/* 댓글 입력창 */}
                     <div className={`bg-white p-4 rounded-3xl shadow-sm border border-gray-100 mb-4 ${isClosed ? 'opacity-60 grayscale' : ''}`}>
                         <div className="flex items-center gap-2 mb-2">
-                           <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-[10px]">🙂</div>
                            <span className="text-xs font-bold text-gray-600">나 (익명)</span>
-                           {mode === 'choice_discuss' && myVote && <span className="text-[10px] bg-orange-50 text-orange-600 px-1.5 rounded font-bold"> · {myVote}</span>}
                         </div>
                         <textarea 
                           value={commentInput} 
@@ -405,26 +624,42 @@ const DiscussionRoom = ({ roomData, onBack }) => {
 
                     {/* 댓글 리스트 */}
                     <div className="space-y-3">
-                        {getFilteredComments().map(c => {
-                             const isMatch = mode === 'choice_discuss' && myVote && c.vote === myVote;
+                        {getFilteredComments().length === 0 ? (
+                           <div className="text-center py-10 text-gray-300 text-xs">아직 글이 없어! 첫 번째 주인공이 되어줘 😎</div>
+                        ) : (
+                          getFilteredComments().map(c => {
+                             // 다중 투표일 경우 일치도 계산하여 태그 표시
+                             const score = isMultiChoice && isVoted ? calculateMatchScore(c.voteProfile) : 0;
+                             const matchTag = isMultiChoice && isVoted ? getMatchTag(score) : null;
+                             
+                             // 단일 투표일 경우 단순 일치 여부
+                             const isSingleMatch = !isMultiChoice && myVotes['q1'] && c.vote === myVotes['q1'];
+
                              return (
                                 <div key={c.id} className={`p-4 rounded-3xl shadow-sm border-2 ${c.isMe ? 'bg-white border-blue-100' : 'bg-white border-transparent'}`}>
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${c.color}`}>{c.name.split(' ')[1].substring(0,2)}</span>
-                                        <span className="font-bold text-gray-700 text-xs">{c.name}</span>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className={`font-bold text-xs ${c.colorClass}`}>{c.name}</span>
                                         <span className="text-[10px] text-gray-300">{c.timeStr}</span>
-                                        {isMatch && <span className="text-[10px] px-2 py-0.5 rounded-full bg-pink-100 text-pink-500 font-bold ml-auto">⚡️ 찌찌뽕!</span>}
+                                        
+                                        {/* 태그 표시 영역 */}
+                                        {isMultiChoice && matchTag && (
+                                           <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold ml-auto ${matchTag.color}`}>{matchTag.text}</span>
+                                        )}
+                                        {isSingleMatch && (
+                                           <span className="text-[9px] px-2 py-0.5 rounded-full bg-pink-100 text-pink-500 font-bold ml-auto">⚡️ 찌찌뽕!</span>
+                                        )}
                                     </div>
-                                    <div className="pl-8">
+                                    <div className="">
                                         <p className="text-sm text-gray-600 font-medium leading-relaxed">{c.content}</p>
                                         <div className="flex items-center gap-2 mt-2">
-                                          {mode === 'choice_discuss' && c.vote && <span className="text-[10px] bg-gray-50 text-gray-400 px-1.5 py-0.5 rounded border border-gray-100">{c.vote}</span>}
+                                          {!isMultiChoice && c.vote && <span className="text-[10px] bg-gray-50 text-gray-400 px-1.5 py-0.5 rounded border border-gray-100">{c.vote}</span>}
                                           <button className="flex items-center gap-1 text-gray-300 text-xs ml-auto hover:text-red-400 transition-colors"><ThumbsUp className="w-3 h-3" /> {c.likes}</button>
                                         </div>
                                     </div>
                                 </div>
                              );
-                        })}
+                          })
+                        )}
                     </div>
                   </>
                 )}
@@ -441,22 +676,42 @@ export default function App() {
   const [currentView, setCurrentView] = useState('list'); 
   const [selectedRoom, setSelectedRoom] = useState(null);
 
+  const renderView = () => {
+    switch(currentView) {
+      case 'list':
+        return (
+          <RoomList 
+            onSelectRoom={(room) => {
+              setSelectedRoom(room);
+              setCurrentView('room');
+            }}
+            onGoToSuggest={() => setCurrentView('suggest')}
+          />
+        );
+      case 'room':
+        return (
+          <DiscussionRoom 
+            roomData={selectedRoom} 
+            onBack={() => {
+              setSelectedRoom(null);
+              setCurrentView('list');
+            }} 
+          />
+        );
+      case 'suggest':
+        return (
+          <SuggestTopic 
+            onBack={() => setCurrentView('list')}
+          />
+        );
+      default:
+        return <div>Error</div>;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#FFF9F0] text-gray-800 font-sans flex justify-center">
-      {currentView === 'list' ? (
-        <RoomList onSelectRoom={(room) => {
-          setSelectedRoom(room);
-          setCurrentView('room');
-        }} />
-      ) : (
-        <DiscussionRoom 
-          roomData={selectedRoom} 
-          onBack={() => {
-            setSelectedRoom(null);
-            setCurrentView('list');
-          }} 
-        />
-      )}
+      {renderView()}
     </div>
   );
 }
